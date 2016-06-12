@@ -60,10 +60,13 @@
 #include <conio.h> // Keybord 
 #include <math.h>       /* cos */
 
-#define SETTING_COM_PORT					7
+#define SETTING_COM_PORT					8
 #define SETTING_COM_BAUDRATE				57600
-#define SETTING_TABLE_SIZE_X				400 
-#define SETTING_TABLE_SIZE_Y				400 
+#define SETTING_TABLE_SIZE_X				350 
+#define SETTING_TABLE_SIZE_Y				350 
+#define SETTING_TABLE_SIZE_X_min			50 
+#define SETTING_TABLE_SIZE_Y_min		    50 
+
 #define SETTING_DELAY_COMMAND				10
 
 #define SETTING_MANUAL_MODE_STEP			5
@@ -208,21 +211,17 @@ void PatternCircleOutFromCenter() {
 	printf("FYI: PatternCircleOutFromCenter\n");
 
 	plotter.SendCommand(GCODE_G90_ABSOLUTE_PROGRAMMING);
-	plotter.Move(SETTING_TABLE_SIZE_X / 2, SETTING_TABLE_SIZE_Y / 2);
+	// plotter.Move(SETTING_TABLE_SIZE_X_min+SETTING_TABLE_SIZE_X / 2, SETTING_TABLE_SIZE_Y_min+SETTING_TABLE_SIZE_Y / 2);
 
-	printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-	printf("!  Clean the sand and press any key   !\n");
-	printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-	system("pause");
 
 
 	
-	for (int radius = 10; radius < (SETTING_TABLE_SIZE_X / 2); radius += 10) {
+	for (int radius = 10; radius < 150; radius += 10) {
 		for (int i = 0; i < 360; i += 20)
 		{
 			float angle = i * 2 * 3.14 / 360;
-			float Xpos = SETTING_TABLE_SIZE_X / 2 + (cos(angle) * radius);
-			float Ypos = SETTING_TABLE_SIZE_Y / 2 + (sin(angle) * radius);
+			float Xpos =  (cos(angle) * radius);
+			float Ypos =  (sin(angle) * radius);
 
 			printf("i=%d, Xpos=%f, Ypos=%f\n", i, Xpos, Ypos);
 			plotter.Move(Xpos, Ypos);
@@ -405,13 +404,16 @@ int main()
 	}
 
 	// Find home. 
-	plotter.SendCommand(GCODE_G01_GO_HOME);
+	// plotter.SendCommand(GCODE_G01_GO_HOME);
+	while (true)
+	{
+		PatternCircleOutFromCenter();
+	}
 	
-
-
+	
 	// Enter manual mode
 	// Wait on use key.
-	ManualMode();
+	//ManualMode();
 
 
 	// Testing 
