@@ -52,3 +52,10 @@ software/ZenGarden/Debug/ZenGarden.pdb
 software/ZenGarden/ZenGarden/Debug/vc140.idb
 *.pdb
 software/ZenGarden/ZenGarden/ReadMe.txt
+software/ZenGarden/ZenGarden/Release/ZenGarden.tlog/ZenGarden.lastbuildstate
+*.tlog
+software/ZenGarden/ZenGarden/Release/ZenGarden.pch
+*.iobj
+software/ZenGarden/ZenGarden/Debug/ZenGarden.log
+*.log
+software/ZenGarden/Release/ZenGarden.ipdb

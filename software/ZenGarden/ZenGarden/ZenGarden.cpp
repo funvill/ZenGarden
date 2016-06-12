@@ -43,16 +43,6 @@
  */
 
 
-/**
- * The corndent system is fucked for some reason 
- *
- * *-----------------------------------------------------------*
- * | Top left {X=+420, y=-400)        Top right {x=0, y=-400)  |
- * |                 Center {X=210, Y=-200}                    |
- * | Top left {X=+420, y=   0)        Top right {x=0, y=   0)  |  
- * *-----------------------------------------------------------*
- * 
- */
 
 
 #include "stdafx.h"
@@ -62,10 +52,10 @@
 
 #define SETTING_COM_PORT					8
 #define SETTING_COM_BAUDRATE				57600
-#define SETTING_TABLE_SIZE_X				350 
-#define SETTING_TABLE_SIZE_Y				350 
-#define SETTING_TABLE_SIZE_X_min			50 
-#define SETTING_TABLE_SIZE_Y_min		    50 
+
+#define SETTING_TABLE_SIZE					300 
+#define SETTING_TABLE_SIZE_X				SETTING_TABLE_SIZE 
+#define SETTING_TABLE_SIZE_Y				SETTING_TABLE_SIZE 
 
 #define SETTING_DELAY_COMMAND				10
 
@@ -82,6 +72,12 @@
 #define SEND_BUFFER_MAX_LENGTH				1024 
 #define READ_BUFFER_MAX_LENGTH				1024
 
+#define STATE_RUNNING				1
+#define STATE_PAUSE					2
+#define STATE_SHUTDOWN				3
+
+int globalState;
+
 
 class CPlotter
 {
@@ -96,7 +92,6 @@ class CPlotter
 				printf("Error: Could not open the serial port. port=%d, baudrate=%d\n", port, baudrate);
 				return false;
 			}
-
 			return SendCommand(GCODE_G90_ABSOLUTE_PROGRAMMING);
 		}
 
@@ -135,8 +130,11 @@ class CPlotter
 
 		void ReadIncomingBuffer() {
 			// Wait for last command to finish first
-			// This is indecated by reciving a ">" 
+			// This is indecated by reciving a ">" 			
 			while (this->m_serial.ReadDataWaiting() <= 0) {
+				if (!checkUserInput()) {
+					return;
+				}
 				Sleep(0); // Give some time back to the OS 
 			}
 			// For debug, print out what we recived. 
@@ -147,13 +145,71 @@ class CPlotter
 					recvBuffer[recvBufferLength - 1] = 0;
 					printf("%s\n", recvBuffer);
 				}
+				if (!checkUserInput()) {
+					return;
+				}
 			} while (this->m_serial.ReadDataWaiting() > 0);
+			
+		}
 
+
+		bool checkUserInput() {
+			if (globalState == STATE_SHUTDOWN) {
+				return false;
+			}
+			if (!_kbhit()) {
+				return true;
+			}
+			char key = _getch();
+			if (key < 0) {
+				return true;
+			}
+			key = toupper(key);
+
+			switch (key)
+			{
+			case 'Q':
+				printf("\n\n");
+				printf("FYI: !!!!!!!!!!!!!!!!!\n");
+				printf("FYI: !!     QUIT    !!\n");
+				printf("FYI: !!!!!!!!!!!!!!!!!\n");
+				printf("\n\n");
+				globalState = STATE_SHUTDOWN;
+				return false;
+				break;
+			case 'P':
+			default:
+				if (globalState == STATE_RUNNING) {
+					printf("\n\n");
+					printf("FYI: !!!!!!!!!!!!!!!!!\n");
+					printf("FYI: !!     PAUSE   !!\n");
+					printf("FYI: !!!!!!!!!!!!!!!!!\n");
+					printf("\n\n");
+					globalState = STATE_PAUSE;
+
+					while (globalState == STATE_PAUSE) {
+						if (!checkUserInput()) {
+							return false;
+						}
+						Sleep(0);
+					}
+				}
+				else {
+					printf("\n\n");
+					printf("FYI: !!!!!!!!!!!!!!!!!\n");
+					printf("FYI: !!   RUNNING   !!\n");
+					printf("FYI: !!!!!!!!!!!!!!!!!\n");
+					printf("\n\n");
+					globalState = STATE_RUNNING;
+				}
+				break;
+			}
+			return true;
 		}
 };
 CPlotter plotter;
 
-
+#if 0 
 /*
 void PatternOffSidedBox() {
 	printf("FYI: PatternOffSidedBox\n");
@@ -194,7 +250,7 @@ void PatternBoxToCenter() {
 
 	plotter.SendCommand(GCODE_G90_ABSOLUTE_PROGRAMMING);
 
-	int setting_step = 5; 
+	int setting_step = 5;
 	int box_size = ((SETTING_TABLE_SIZE_X > SETTING_TABLE_SIZE_Y) ? SETTING_TABLE_SIZE_Y : SETTING_TABLE_SIZE_X);
 	for (int offset = setting_step; offset < box_size - setting_step; offset += setting_step) {
 		plotter.Move(offset, offset); // Bottom right 
@@ -204,37 +260,9 @@ void PatternBoxToCenter() {
 		plotter.Move(offset, offset); // Bottom right 
 
 		printf("FYI: %d of %d Loops \n", (box_size - offset) / setting_step, box_size / setting_step);
-	}	
-}
-
-void PatternCircleOutFromCenter() {
-	printf("FYI: PatternCircleOutFromCenter\n");
-
-	plotter.SendCommand(GCODE_G90_ABSOLUTE_PROGRAMMING);
-	// plotter.Move(SETTING_TABLE_SIZE_X_min+SETTING_TABLE_SIZE_X / 2, SETTING_TABLE_SIZE_Y_min+SETTING_TABLE_SIZE_Y / 2);
-
-
-
-	
-	for (int radius = 10; radius < 150; radius += 10) {
-		for (int i = 0; i < 360; i += 20)
-		{
-			float angle = i * 2 * 3.14 / 360;
-			float Xpos =  (cos(angle) * radius);
-			float Ypos =  (sin(angle) * radius);
-
-			printf("i=%d, Xpos=%f, Ypos=%f\n", i, Xpos, Ypos);
-			plotter.Move(Xpos, Ypos);
-		}
 	}
-
-	
-	// plotter.Arc(200, 0, 10, 01, GCODE_G02_CIRCULAR_INTERPOLATION_CLOCKWISE);
-
-	
-
-	printf("Done\n");
 }
+
 
 void PatternRandomeLines() {
 	printf("FYI: PatternRandomeLines\n");
@@ -288,26 +316,7 @@ void PatternStar() {
 }
 
 
-void PrintHelp() {
-	printf("Help:\n");
-	printf("Version: 0.01, Last updated: June 9th, 2016\n");
-	printf("\n");
 
-	printf("Utilties: \n");
-	printf("1 = Go Home\n");
-	printf("2 = Go To Center\n");
-	printf("3 = Outline the working area\n");
-	printf("7 = Random Lines\n");
-
-	printf("Modes: \n");
-	printf("4 = PatternBoxToCenter\n");
-	printf("5 = PatternStar\n");
-	printf("6 = PatternCircleOutFromCenter\n");
-	
-	
-	
-	printf("\n");
-}
 void ManualMode() {
 	printf("FYI: Entering Manual Mode\n");
 	plotter.SendCommand(GCODE_G91_POSITION_REFERENCED);
@@ -389,74 +398,120 @@ void ManualMode() {
 	}
 	printf("FYI: Leaving Manual Mode\n");
 }
+#endif // 0 
+
+void PrintHelp() {
+	printf("Help:\n");
+	printf("Version: 0.01, Last updated: June 12th, 2016\n");
+	printf("\n");
+
+	printf("Utilties: \n");
+	printf("1 = Go Home\n");
+	printf("2 = Go To Center\n");
+	printf("3 = Outline the working area\n");
+	printf("7 = Random Lines\n");
+
+	printf("Modes: \n");
+	printf("4 = PatternBoxToCenter\n");
+	printf("5 = PatternStar\n");
+	printf("6 = PatternCircleOutFromCenter\n");
+
+
+	printf("\n");
+}
+
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+
+
+
+
+
+
+void PatternCircleOutFromCenter() {
+	printf("FYI: PatternCircleOutFromCenter\n");
+
+	plotter.SendCommand(GCODE_G90_ABSOLUTE_PROGRAMMING);
+	plotter.Move(0, 0);
+
+	for (int radius = 10; radius < SETTING_TABLE_SIZE/2; radius += 10) {
+		for (int i = 0; i < 360; i += 20)
+		{
+			if (!plotter.checkUserInput()) {
+				return; 
+			}
+			float angle = i * (2 * 3.14) / 360;
+			float Xpos = (cos(angle) * radius);
+			float Ypos = (sin(angle) * radius);
+			plotter.Move(Xpos, Ypos);
+		}
+	}
+
+	printf("Done\n");
+}
+
+void PatternBoxFromCenter() {
+	printf("FYI: PatternBoxToCenter\n");
+
+	plotter.SendCommand(GCODE_G90_ABSOLUTE_PROGRAMMING);
+	plotter.Move(0, 0);
+
+	int maxBoxSize = SETTING_TABLE_SIZE; // Max size 
+
+	// Square out 
+	int x, y, dx, dy;
+	x = y = dx = 0;
+	dy = -1;
+	int t = maxBoxSize;
+	int maxI = t*t;
+	for (int i = 0; i < maxI; i++) {
+		if (!plotter.checkUserInput()) {
+			return;
+		}
+		if ((-maxBoxSize / 2 <= x) && (x <= maxBoxSize / 2) && (-maxBoxSize / 2 <= y) && (y <= maxBoxSize / 2)) {
+			plotter.Move(x, y);			
+		}
+		if ((x == y) || ((x < 0) && (x == -y)) || ((x > 0) && (x == 1 - y))) {
+			t = dx;
+			dx = -dy;
+			dy = t;
+		}
+		x += dx;
+		y += dy;
+	}
+
+	plotter.Move(0, 0);
+}
+
 
 int main()
 {
 	PrintHelp();	
-
-
-
-
-
+	
 	if (!plotter.Open(SETTING_COM_PORT, SETTING_COM_BAUDRATE)) {
 		printf("Error: Could not connect to the plotter");
 		return 1;
 	}
 
-	// Find home. 
-	// plotter.SendCommand(GCODE_G01_GO_HOME);
-	while (true)
+
+
+	// Loop in demo mode 
+	globalState = STATE_RUNNING; 
+	while (globalState == STATE_RUNNING )
 	{
 		PatternCircleOutFromCenter();
+		PatternBoxFromCenter();
+
 	}
-	
-	
+		
+	// Find home. 
+	// plotter.SendCommand(GCODE_G01_GO_HOME);
+
 	// Enter manual mode
 	// Wait on use key.
 	//ManualMode();
-
-
-	// Testing 
-	// =====================
-	/*
-	for (int offset = 0; offset < 100; offset+= 10 ) {
-		plotter.Move(offset, -20 - offset);
-		plotter.Move(-20 - offset, offset);
-		plotter.Move(offset, +20 + offset);
-		plotter.Move(+20 + (2*offset), offset);
-
-		// plotter.Move(10, 10);
-	}
-	*/
-
-	/*
-	// other 	
-	for (int offset = 0; offset < 100; offset += 5) {
-		for (int direction = 0; direction < 4; direction++) {
-			switch (direction) {
-			case 0: // North 
-				plotter.Move(0, -1 * offset);
-				break;
-			case 1: // West 
-				plotter.Move(-1 * offset, 0);
-				break;
-			case 2: // South 
-				plotter.Move(0, 1 * offset);
-				break;
-			case 3: // East 
-				plotter.Move(1 * offset, 0);
-				break;
-			}
-		}		
-	}
-	*/
-
 	
 	plotter.Close(); 
-
-
-
-
     return 0;
 }
 
