@@ -50,7 +50,7 @@
 #include <conio.h> // Keybord 
 #include <math.h>       /* cos */
 
-#define SETTING_COM_PORT					8
+#define SETTING_COM_PORT					3
 #define SETTING_COM_BAUDRATE				57600
 
 #define SETTING_TABLE_SIZE					300 
@@ -424,8 +424,57 @@ void PrintHelp() {
 // ----------------------------------------------------------------------------
 
 
+void PatternStarOutFromCenterRandom() {
+	printf("FYI: PatternStarOutFromCenterRandom\n");
+
+	plotter.SendCommand(GCODE_G90_ABSOLUTE_PROGRAMMING);
+	plotter.Move(0, 0);
+
+	int radius = SETTING_TABLE_SIZE / 2;
+	int i = 0;
+	for (int iterations = 0; iterations < 20; iterations++)
+	{		
+		if (i > 360) {
+			i - 360;
+		}
+		i += 360/2-30;
+		if (!plotter.checkUserInput()) {
+			return;
+		}
+		float angle = i * (2 * 3.14) / 360;
+		float Xpos = (cos(angle) * radius);
+		float Ypos = (sin(angle) * radius);
+		plotter.Move(Xpos, Ypos);
+	}
+
+	plotter.Move(0, 0);
+	printf("Done\n");
+}
 
 
+void PatternStarOutFromCenter() {
+	printf("FYI: PatternStarOutFromCenter\n");
+
+	plotter.SendCommand(GCODE_G90_ABSOLUTE_PROGRAMMING);
+	plotter.Move(0, 0);
+
+	int radius = SETTING_TABLE_SIZE / 2; 
+
+	for (int i = 0; i < 360; i += 10)
+	{
+		if (!plotter.checkUserInput()) {
+			return;
+		}
+		float angle = i * (2 * 3.14) / 360;
+		float Xpos = (cos(angle) * radius);
+		float Ypos = (sin(angle) * radius);
+		plotter.Move(Xpos, Ypos);
+		plotter.Move(0, 0);
+	}
+	
+
+	printf("Done\n");
+}
 
 
 void PatternCircleOutFromCenter() {
@@ -464,7 +513,7 @@ void PatternBoxFromCenter() {
 	dy = -1;
 	int t = maxBoxSize;
 	int maxI = t*t;
-	for (int i = 0; i < maxI; i++) {
+	for (int i = 0; i < maxI; i+=1) {
 		if (!plotter.checkUserInput()) {
 			return;
 		}
@@ -499,9 +548,10 @@ int main()
 	globalState = STATE_RUNNING; 
 	while (globalState == STATE_RUNNING )
 	{
+		PatternStarOutFromCenterRandom(); 
 		PatternCircleOutFromCenter();
-		PatternBoxFromCenter();
-
+		PatternStarOutFromCenter(); 
+		PatternCircleOutFromCenter();
 	}
 		
 	// Find home. 
